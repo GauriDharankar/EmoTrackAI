@@ -1,12 +1,12 @@
-EmoTrack AI
-NLP-based Emotion Detection System with Streamlit Interface
+# EmoTrack AI
+**NLP-based Emotion Detection System with Streamlit Interface**
 
-Overview
+## Overview
 EmoTrack AI is a machine learning-based system designed to detect user emotions from social media text.
 It uses NLP techniques to process textual input and classify it into emotional categories.
 The project also includes a basic Streamlit interface, allowing users to interact with the model in real time.
 
-Features
+## Features
 - Emotion detection from text input
 - Text preprocessing (cleaning, tokenization, stopword removal)
 - Feature extraction using TF-IDF
@@ -17,7 +17,7 @@ Features
   - Group analysis mode
   - Clinician mode
 
-System Workflow
+## System Workflow
 - Input: Social media text
 - Preprocessing:
   - Cleaning and normalization
@@ -28,32 +28,32 @@ System Workflow
 - Interface: Streamlit UI takes input and displays predicted emotion
 - Output: Predicted emotion label
 
-Tech Stack
+## Tech Stack
 Language: Python
 Libraries: Scikit-learn, Pandas
 Framework: Streamlit
 Techniques: TF-IDF, Text Preprocessing
 
-Evaluation
+## Evaluation
 Model evaluated using:
 - Accuracy
 - F1-score
 
-Current Status
+## Current Status
 Completed — NLP-based emotion detection pipeline implemented with a basic Streamlit interface
 
-Future Improvements
+## Future Improvements
 - Use transformer-based models (BERT, etc.) for improved accuracy
 - Enhance Streamlit UI with better visualization
 - Enable real-time emotion analysis from streaming data
 - Add user-level insights for clinician and group modes
 
-Use Cases
+## Use Cases
 - Mental health awareness
 - Social media sentiment analysis
 - Research and behavioral studies
 - Support tools for clinicians
 
-Author
+## Author
 Gauri Dharankar
 Aspiring Machine Learning Engineer
