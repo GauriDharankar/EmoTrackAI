@@ -1,17 +1,19 @@
 import pandas as pd
 import re
 import pickle
+from pathlib import Path
 
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.model_selection import train_test_split
 from sklearn.svm import LinearSVC
 from sklearn.metrics import classification_report
 
-from pyspark.sql import SparkSession
+from explainability import predict_with_explanation
 
-spark = SparkSession.builder \
-    .appName("EmoTrack") \
-    .getOrCreate()
+BASE_DIR = Path(__file__).resolve().parent
+DATA_DIR = BASE_DIR / "data"
+MODEL_DIR = BASE_DIR / "model"
+MODEL_DIR.mkdir(exist_ok=True)
 
 # TEXT CLEANING
 
@@ -22,16 +24,8 @@ def clean_text(text):
 
 # LOAD MENTAL HEALTH DATA
 
-df_mh_spark = spark.read.csv("data/mental_health.csv", header=True, inferSchema=True)
-
-df_mh_spark = df_mh_spark.selectExpr("statement as text", "status as label")
-
-df_mh = df_mh_spark.toPandas()
-
-df_mh = df_mh.rename(columns={
-    "statement": "text",
-    "status": "label"
-})
+df_mh = pd.read_csv(DATA_DIR / "mental_health.csv", usecols=["statement", "status"])
+df_mh = df_mh.rename(columns={"statement": "text", "status": "label"})
 
 def map_mh(label):
     label = str(label).lower()
@@ -47,13 +41,13 @@ df_mh = df_mh[["text", "label"]]
 
 # LOAD SENTIMENT140
 
-df_tw_spark = spark.read.csv("data/sentiment140.csv", header=False, inferSchema=True)
-
-df_tw_spark = df_tw_spark.toDF("target", "id", "date", "flag", "user", "text")
-
-df_tw_spark = df_tw_spark.select("text", "target")
-
-df_tw = df_tw_spark.toPandas()
+df_tw = pd.read_csv(
+    DATA_DIR / "sentiment140.csv",
+    header=None,
+    names=["target", "id", "date", "flag", "user", "text"],
+    usecols=["target", "text"],
+    encoding="latin-1",
+)
 
 def map_sentiment(label):
     if label == 0:
@@ -69,9 +63,7 @@ df_tw = df_tw[["text", "label"]]
 
 # LOAD GOEMOTIONS
 
-df_go_spark = spark.read.csv("data/goemotions.csv", header=True, inferSchema=True)
-
-df_go = df_go_spark.toPandas()
+df_go = pd.read_csv(DATA_DIR / "goemotions.csv")
 
 def map_goemotion(row):
     # Anxiety
@@ -169,19 +161,24 @@ print(classification_report(y_test, y_pred))
 
 # SAVE MODEL
 
-pickle.dump(model, open("model/model_v2.pkl", "wb"))
-pickle.dump(vectorizer, open("model/vectorizer_v2.pkl", "wb"))
+with (MODEL_DIR / "model_v2.pkl").open("wb") as model_file:
+    pickle.dump(model, model_file)
+with (MODEL_DIR / "vectorizer_v2.pkl").open("wb") as vectorizer_file:
+    pickle.dump(vectorizer, vectorizer_file)
 
 print("\nModel v2 saved successfully!")
 
-# TEST
-
-def predict_text(text):
-    text = clean_text(text)
-    vec = vectorizer.transform([text])
-    return model.predict(vec)[0]
-
 print("\nTest Predictions:")
-print("I feel nervous:", predict_text("I feel very nervous"))
-print("I feel hopeless:", predict_text("I feel hopeless and tired"))
-print("I feel good:", predict_text("I feel happy and relaxed"))
+sample_texts = [
+    "I feel very nervous",
+    "I feel hopeless and tired",
+    "I feel happy and relaxed",
+]
+
+for sample_text in sample_texts:
+    explanation = predict_with_explanation(sample_text, model, vectorizer)
+    print(
+        f"{sample_text}: {explanation['label']} "
+        f"({explanation['confidence'] * 100:.1f}% confidence)"
+    )
+    print("Keywords:", ", ".join(explanation["keywords"]) or "No strong keywords")

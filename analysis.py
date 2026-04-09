@@ -1,29 +1,23 @@
 import pickle
-import re
 import matplotlib.pyplot as plt
+from pathlib import Path
+
+from explainability import predict_with_explanation
 
 # LOAD MODEL
 
-model = pickle.load(open("model/model_v2.pkl", "rb"))
-vectorizer = pickle.load(open("model/vectorizer_v2.pkl", "rb"))
+BASE_DIR = Path(__file__).resolve().parent
 
-# CLEAN TEXT
-
-def clean_text(text):
-    text = str(text).lower()
-    text = re.sub(r"[^a-zA-Z ]", "", text)
-    return text
+with (BASE_DIR / "model" / "model_v2.pkl").open("rb") as model_file:
+    model = pickle.load(model_file)
+with (BASE_DIR / "model" / "vectorizer_v2.pkl").open("rb") as vectorizer_file:
+    vectorizer = pickle.load(vectorizer_file)
 
 # PREDICTION
 
 def predict_text(text):
-    text_clean = clean_text(text)
-    vec = vectorizer.transform([text_clean])
-    pred = model.predict(vec)[0]
-
-    pred = refine_prediction(text, pred)
-
-    return pred
+    explanation = predict_with_explanation(text, model, vectorizer)
+    return explanation["label"], explanation
 
 # TIMELINE ANALYSIS
 
@@ -43,8 +37,8 @@ def analyze_timeline(texts):
     }
 
     for t in texts:
-        pred = predict_text(t)
-        results.append(pred)
+        pred, explanation = predict_text(t)
+        results.append(explanation)
         scores.append(score_map[pred])
 
     # TREND DETECTION
@@ -81,31 +75,6 @@ def analyze_timeline(texts):
 
     return results, trend, shift, risk, scores
 
-# Handling edge cases
-def rule_refinement(text, pred):
-    text = text.lower()
-
-    if "hopeless" in text or "empty" in text or "worthless" in text:
-        return "depression"
-    
-    if "nervous" in text or "panic" in text:
-        return "anxiety"
-    
-    return pred
-
-def refine_prediction(text, pred):
-    text = text.lower()
-
-    # Anxiety keywords
-    if any(word in text for word in ["nervous", "panic", "anxious", "restless"]):
-        return "anxiety"
-    
-    # Depression keywords
-    if any(word in text for word in ["hopeless", "empty", "worthless", "tired of life"]):
-        return "depression"
-
-    return pred
-
 # GRAPH FUNCTION
 
 def plot_timeline(scores):
@@ -122,22 +91,6 @@ def plot_timeline(scores):
     plt.ylabel("Mental State Level")
 
     plt.grid(True)
-
-# EXPLAINABLE AI
-
-def explain_prediction(text):
-
-    text_clean = clean_text(text)
-    vec = vectorizer.transform([text_clean])
-
-    feature_names = vectorizer.get_feature_names_out()
-    weights = vec.toarray()[0]
-
-    top_indices = weights.argsort()[-5:][::-1]
-
-    keywords = [feature_names[i] for i in top_indices if weights[i] > 0]
-
-    return keywords
 
 # SUGGESTIONS
 
@@ -168,12 +121,17 @@ if __name__ == "__main__":
 
     results, trend, shift, risk, scores = analyze_timeline(texts)
 
-    print("Predictions:", results)
+    print("Predictions:")
+    for text, result in zip(texts, results):
+        print(
+            f"- {text} -> {result['label']} "
+            f"({result['confidence'] * 100:.1f}% confidence)"
+        )
+        print("  Keywords:", ", ".join(result["keywords"]) or "No strong keywords")
+
     print("Trend:", trend)
     print("Shift:", shift)
     print("Risk:", risk)
-
-    print("\nKeywords:", explain_prediction(texts[-1]))
 
     print("\nSuggestion:", get_suggestion(risk))
 
